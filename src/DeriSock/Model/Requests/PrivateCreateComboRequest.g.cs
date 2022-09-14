@@ -21,6 +21,6 @@ namespace DeriSock.Model
     /// </summary>
     [System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [Newtonsoft.Json.JsonPropertyAttribute("trades")]
-    public ComboLeg[] Trades { get; set; } = System.Array.Empty<ComboLeg>();
+    public CreateComboTrade[] Trades { get; set; } = System.Array.Empty<CreateComboTrade>();
   }
 }
