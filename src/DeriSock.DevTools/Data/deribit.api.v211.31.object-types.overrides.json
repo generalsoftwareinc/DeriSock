@@ -680,6 +680,16 @@
         "arrayDataType": "Announcement"
       }
     },
+    "public/get_portfolio_margins": {
+      "response": {
+        "dataType": "PortfolioMargins"
+      }
+    },
+    "private/get_portfolio_margins": {
+      "response": {
+        "dataType": "PortfolioMargins"
+      }
+    },
     "private/change_api_key_name": {
       "response": {
         "dataType": "ApiKeyData"
@@ -918,7 +928,7 @@
           "trades": {
             "arrayDataType": "UserTrade"
           },
-          "position": {
+          "positions": {
             "arrayDataType": "UserPosition"
           }
         }
@@ -934,7 +944,7 @@
           "trades": {
             "arrayDataType": "UserTrade"
           },
-          "position": {
+          "positions": {
             "arrayDataType": "UserPosition"
           }
         }
