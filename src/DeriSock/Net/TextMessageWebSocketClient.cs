@@ -9,7 +9,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Serilog;
 using Serilog.Events;
 
@@ -19,7 +18,7 @@ using Serilog.Events;
 /// <summary>
 ///   An <see cref="ITextMessageClient" /> implementation using a <see cref="ClientWebSocket" />.
 /// </summary>
-public sealed class TextMessageWebSocketClient : ITextMessageClient
+public sealed class TextMessageWebSocketClient : ITextMessageClient, IDisposable
 {
   private readonly ILogger? _logger;
   private Uri? _webSocketEndpoint;
@@ -29,7 +28,7 @@ public sealed class TextMessageWebSocketClient : ITextMessageClient
   public bool IsConnected { get; private set; }
 
   /// <summary>
-  ///   Creates an instance of the <see cref="TextMessageWebSocketClient" /> class.
+  /// Creates an instance of the <see cref="TextMessageWebSocketClient" /> class.
   /// </summary>
   /// <param name="logger">Optional implementation of the <see cref="ILogger" /> interface to enable logging capabilities.</param>
   public TextMessageWebSocketClient(ILogger? logger)
@@ -45,6 +44,12 @@ public sealed class TextMessageWebSocketClient : ITextMessageClient
 
     _webSocketEndpoint = endpoint;
 
+    // Dispose of the previous _webSocket object if it exists
+    if (_webSocket != null)
+    {
+      _webSocket.Dispose();
+    }
+
     _webSocket = new ClientWebSocket();
 
     _logger?.Information("Connecting to {Endpoint}", _webSocketEndpoint);
@@ -56,7 +61,8 @@ public sealed class TextMessageWebSocketClient : ITextMessageClient
     }
     catch (Exception ex)
     {
-      _logger?.Error(ex, "TextMessageWebSocketClient::Connect :: Exception while attempting to connect the ClientWebSocket to the endpoint");
+      _logger?.Error(ex,
+        "TextMessageWebSocketClient::Connect :: Exception while attempting to connect the ClientWebSocket to the endpoint");
       throw;
     }
   }
@@ -69,17 +75,20 @@ public sealed class TextMessageWebSocketClient : ITextMessageClient
 
     _logger?.Information("Closing connection to the endpoint");
 
-    if (_webSocket.State is not (WebSocketState.Open or WebSocketState.Connecting or WebSocketState.CloseReceived))
+    if (_webSocket.State != WebSocketState.Open && _webSocket.State != WebSocketState.Connecting &&
+        _webSocket.State != WebSocketState.CloseReceived)
     {
-      _logger?.Debug("TextMessageWebSocketClient::Disconnect encountered an invalid WebSocketState: {State}", _webSocket.State);
+      _logger?.Debug("TextMessageWebSocketClient::Disconnect encountered an invalid WebSocketState: {State}",
+        _webSocket.State);
       _webSocket.Dispose();
       _webSocket = null!;
       IsConnected = false;
       return;
     }
 
-    if (_webSocket.State is WebSocketState.Open or WebSocketState.CloseReceived)
-      await _webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, string.Empty, cancellationToken).ConfigureAwait(false);
+    if (_webSocket.State == WebSocketState.Open || _webSocket.State == WebSocketState.CloseReceived)
+      await _webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, string.Empty, cancellationToken)
+        .ConfigureAwait(false);
 
     _webSocket.Dispose();
     _webSocket = null!;
@@ -109,14 +118,15 @@ public sealed class TextMessageWebSocketClient : ITextMessageClient
     }
     catch (Exception ex)
     {
-      _logger?.Debug(ex, "TextMessageWebSocketClient::Send: Error during send");
-      await Disconnect(CancellationToken.None).ConfigureAwait(false);
+      _logger?.Error(ex, "TextMessageWebSocketClient::Send :: Exception while attempting to send a message");
       throw;
     }
   }
 
+
   /// <inheritdoc />
-  public async IAsyncEnumerable<string> GetMessageStream([EnumeratorCancellation] CancellationToken cancellationToken = default)
+  public async IAsyncEnumerable<string> GetMessageStream(
+    [EnumeratorCancellation] CancellationToken cancellationToken = default)
   {
     const int bufferSize = 4096;
 
@@ -151,10 +161,10 @@ public sealed class TextMessageWebSocketClient : ITextMessageClient
           {
             _logger?.Debug("TextMessageWebSocketClient::GetMessageStream: WebSocket suddenly in aborted state");
             await Disconnect(CancellationToken.None).ConfigureAwait(false);
-            throw new SocketException((int)SocketError.ConnectionAborted);
+            throw new SocketException((int) SocketError.ConnectionAborted);
           }
 
-          if (_webSocket is { State: WebSocketState.Connecting })
+          if (_webSocket is {State: WebSocketState.Connecting})
           {
             _logger?.Debug("TextMessageWebSocketClient::GetMessageStream: Socket not fully connected yet");
             continue;
@@ -228,5 +238,10 @@ public sealed class TextMessageWebSocketClient : ITextMessageClient
     {
       ArrayPool<byte>.Shared.Return(msgBufferBytes);
     }
+  }
+
+  public void Dispose()
+  {
+    _webSocket.Dispose();
   }
 }

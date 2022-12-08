@@ -29,7 +29,7 @@ namespace DeriSock.Model
     /// </summary>
     [System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [Newtonsoft.Json.JsonPropertyAttribute("index_name")]
-    public string IndexName { get; set; } = string.Empty;
+    public DeribitVolatilityIndexName IndexName { get; set; }
     /// <summary>
     /// <para>The timestamp (milliseconds since the Unix epoch)</para>
     /// </summary>
